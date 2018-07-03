@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>摄像头拍照</title>
+    <link rel="stylesheet" href="stylesheets/responsive.css">
+    <link rel="stylesheet" href="stylesheets/style.css">
+</head>
+<body>
+<div id="container" class="container">
+    <video id="video"></video>
+    <canvas id="canvas"></canvas>
+</div>
+
+<script src="/javascripts/tooltip.js"></script>
+<script>
+
+    let canvas = document.getElementById('canvas')
+    let video = document.getElementById('video');
+    if (canvas.getContext) {
+        // Canvas Setting
+        let context = canvas.getContext('2d')
+
+        // Draw buttons
+        drawScreenButtons()
+
+        // Top Btn Click Event
+        let tooltip_is_hover = false
+        canvas.onclick = function (e) {
+            e = e || event
+            let x = e.clientX - canvas.offsetLeft
+            let y = e.clientY - canvas.offsetTop
+            let cWidth = document.getElementById('container').clientWidth
+            let cHeight = document.getElementById('container').clientHeight
+            if (Math.ceil((x - 20) / 40) > 0 && Math.ceil((x - 20) / 40) < 6 + 1 && y > 10 && y < 40) {
+                // alert('you click button' + Math.ceil((x - 20) / 40))
+                let btn = Math.ceil((x - 20) / 40)
+                switch (btn) {
+                    case 3:
+                        var clickX = e.pageX - canvas.offsetLeft
+                        var clickY = e.pageY - canvas.offsetTop
+                        if(!tooltip_is_hover) {
+                            drawToolTip(context, '#546aa', clickX, clickY)
+                            tooltip_is_hover = true
+                        } else {
+                            ToolTip.clear(context, '#546aa', clickX, clickY)
+                        }
+                        break
+                    default:
+                        alert('Click ' + btn)
+                }
+            }
+
+            // 点击下排按钮
+            console.log(Math.ceil(x), ((cWidth-40)/2))
+            if (Math.ceil(x) > ((cWidth-40)/2) && Math.ceil(x) < ((cWidth-40)/2 + 40) && Math.ceil(y) < cHeight-40 && Math.ceil(y) > cHeight - 60) {
+                console.log(' take a photo ...')
+                context.drawImage(video, 0, 0, video.width, video.height);
+                setTimeout(function () {
+                    console.log('静默摄像头...')
+                }, 1000)
+                setTimeout(function () {
+                    console.log('重启摄像头...')
+                    context.drawImage(video, cWidth - 60, cHeight - 60, 40, 40)
+                    drawScreenButtons() // 重绘按钮
+                }, 5000)
+            }
+        }
+    }
+
+    function drawScreenButtons () {
+        // 屏幕上方的按钮
+        let canvas = document.getElementById('canvas')
+        let context = canvas.getContext('2d')
+        let cWidth = document.getElementById('container').clientWidth
+        let cHeight = document.getElementById('container').clientHeight
+        canvas.width = cWidth
+        canvas.height = cHeight
+        video.width = cWidth
+        video.height = cHeight
+
+        let topBtns = ['/images/settings.png', '/images/settings.png', '/images/settings.png', '/images/settings.png', '/images/settings.png', '/images/settings.png']
+        let btnItem = {base_left: 20, base_top: 10, w: 20, h: 20}
+        topBtns.forEach((imageUrl, index) => {
+            let image = new Image()
+            image.src = imageUrl
+            image.onload = function () {
+                let left = (index > 0) ? 40 * (index) + 20 : 20 * (index + 1)
+                context.drawImage(image, left, btnItem.base_top, btnItem.w, btnItem.h)
+            }
+        })
+        // 屏幕下方按钮绘制
+        let bottomBtns = ['./images/change_record_type.png', './images/camera.png', './images/video.png']
+        bottomBtns.forEach((btn, index)=>{
+            let image = new Image()
+            image.src = btn
+            image.onload = function () {
+                let x, y, height = 40, width = 40
+                console.log(index, btn)
+                switch (index) {
+                    case 0:
+                        x = (cWidth-40)/2 - (cWidth-60)/4
+                        break
+                    case 1:
+                        x = (cWidth-40)/2
+                        break
+                    case 2:
+                        x = (cWidth-40)/2 + (cWidth-60)/4
+                        break
+                    default:
+                        break
+                }
+                context.drawImage(image, x, cHeight-60, width, height)
+
+            }
+        })
+        let text = '模式'
+        context.fillStyle = '#FFF'
+        context.font = '20px 宋体'
+        context.fillText(text, 20, cHeight - 35, 60)
+    }
+
+
+
+    //访问用户媒体设备的兼容方法
+    function getUserMedia(constraints, success, error) {
+        if (navigator.mediaDevices.getUserMedia) {
+            //最新的标准API
+            navigator.mediaDevices.getUserMedia(constraints).then(success).catch(error);
+        } else if (navigator.webkitGetUserMedia) {
+            //webkit核心浏览器
+            navigator.webkitGetUserMedia(constraints,success, error)
+        } else if (navigator.mozGetUserMedia) {
+            //firfox浏览器
+            navigator.mozGetUserMedia(constraints, success, error);
+        } else if (navigator.getUserMedia) {
+            //旧版API
+            navigator.getUserMedia(constraints, success, error);
+        }
+    }
+
+    function success(stream) {
+        //兼容webkit核心浏览器
+        let CompatibleURL = window.URL || window.webkitURL;
+        //将视频流设置为video元素的源
+        console.log(stream);
+
+        //video.src = CompatibleURL.createObjectURL(stream);
+        video.srcObject = stream;
+        video.play();
+    }
+
+    function error(error) {
+        console.log(`访问用户媒体设备失败${error.name}, ${error.message}`);
+    }
+
+    if (navigator.mediaDevices.getUserMedia || navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia) {
+        //调用用户媒体设备, 访问摄像头
+        getUserMedia({video : {width: document.getElementById('container').clientWidth, height: document.getElementById('container').clientHeight}}, success, error);
+    } else {
+        alert('不支持访问用户媒体');
+    }
+
+    // 绘制tooltip提示文字
+    function drawToolTip (context, txtLoc, x, y) {
+        context.save()
+        var padding = 3
+        var font = '16px arial'
+        context.font = font
+        context.textBaseline = 'bottom'
+        context.fillStyle = 'white'
+
+        // 绘制ToolTip背景
+        var width = context.measureText(txtLoc).width
+        var height = parseInt(font, 10)
+        context.globalAlpha = 0.6;
+        context.fillRect(20, y + height, 4 * width, (height + padding * 2)*3)
+
+        // 绘制ToolTip文字
+        context.globalAlpha = 1;
+        context.fillStyle = '#000'
+        context.fillText('照片大小（后置摄像头)', 20, y + height+20)
+        context.fillText('13M (4:3)  4128*3096', 20+2, y + height+20+height)
+
+        context.restore()
+    }
+
+</script>
+</body>
+</html>
